@@ -88,61 +88,7 @@ fun Application.module(testing: Boolean = false) {
             }
         }
 
-        get("/memos") {
-            val memos = Memo.all()
-
-            call.respond(memos)
-        }
-
-        get("/memos/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val memo = Memo.findById(id) ?: return@get call.respond(HttpStatusCode.NotFound)
-
-            call.respond(memo)
-        }
-
-        post("/memos") {
-            val memomemo = call.receive<MemoMemo>()
-            val id = transaction {
-                Memos.insertAndGetId {
-                    it[subject] = memomemo.subject
-                }
-            }
-
-            call.respond(
-                HttpStatusCode.Created,
-                mapOf(
-                    "memo_id" to id.value
-                )
-            )
-        }
-
-        put("/memos/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: return@put call.respond(HttpStatusCode.BadRequest)
-            val memomemo = call.receive<MemoMemo>()
-            val affected = transaction {
-                Memos.update({Memos.id eq id}) {
-                    it[subject] = memomemo.subject
-                }
-            }
-
-            if (affected == 0) {
-                return@put call.respond(HttpStatusCode.NotFound)
-            }
-            call.respond(HttpStatusCode.OK)
-        }
-
-        delete("/memos/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: return@delete call.respond(HttpStatusCode.BadRequest)
-            val affected = transaction {
-                Memos.deleteWhere {Memos.id eq id}
-            }
-
-            if (affected == 0) {
-                return@delete call.respond(HttpStatusCode.NotFound)
-            }
-            call.respond(HttpStatusCode.NoContent)
-        }
+        memos()
 
         webSocket("/myws/echo") {
             send(Frame.Text("Hi from server"))
@@ -153,6 +99,64 @@ fun Application.module(testing: Boolean = false) {
                 }
             }
         }
+    }
+}
+
+fun Routing.memos() = route("memos") {
+    get {
+        val memos = Memo.all()
+
+        call.respond(memos)
+    }
+
+    get("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
+        val memo = Memo.findById(id) ?: return@get call.respond(HttpStatusCode.NotFound)
+
+        call.respond(memo)
+    }
+
+    post {
+        val memomemo = call.receive<MemoMemo>()
+        val id = transaction {
+            Memos.insertAndGetId {
+                it[subject] = memomemo.subject
+            }
+        }
+
+        call.respond(
+            HttpStatusCode.Created,
+            mapOf(
+                "memo_id" to id.value
+            )
+        )
+    }
+
+    put("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@put call.respond(HttpStatusCode.BadRequest)
+        val memomemo = call.receive<MemoMemo>()
+        val affected = transaction {
+            Memos.update({Memos.id eq id}) {
+                it[subject] = memomemo.subject
+            }
+        }
+
+        if (affected == 0) {
+            return@put call.respond(HttpStatusCode.NotFound)
+        }
+        call.respond(HttpStatusCode.OK)
+    }
+
+    delete("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+        val affected = transaction {
+            Memos.deleteWhere { Memos.id eq id }
+        }
+
+        if (affected == 0) {
+            return@delete call.respond(HttpStatusCode.NotFound)
+        }
+        call.respond(HttpStatusCode.NoContent)
     }
 }
 
