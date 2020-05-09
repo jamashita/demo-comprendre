@@ -9,6 +9,10 @@ import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.http.*
 import com.fasterxml.jackson.databind.*
+import io.ktor.auth.Authentication
+import io.ktor.auth.UserIdPrincipal
+import io.ktor.auth.authenticate
+import io.ktor.auth.basic
 import io.ktor.jackson.*
 import io.ktor.features.*
 import org.slf4j.event.*
@@ -52,6 +56,19 @@ fun Application.module(testing: Boolean = false) {
         anyHost() // @TODO: Don't do this in production if possible. Try to limit it.
     }
 
+    install(Authentication) {
+        basic(name = "saturn") {
+            realm = "Ktor Server"
+            validate { credentials ->
+                if (credentials.name == name && credentials.password == name) {
+                    return@validate UserIdPrincipal(credentials.name)
+                }
+
+                return@validate null
+            }
+        }
+    }
+
     install(io.ktor.websocket.WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
         timeout = Duration.ofSeconds(15)
@@ -70,13 +87,14 @@ fun Application.module(testing: Boolean = false) {
     )
 
     routing {
-        get("/") {
-            call.respondText("HELLO WORLD????", contentType = ContentType.Text.Plain)
-        }
+        authenticate("saturn") {
+            get {
+                call.respondText("HELLO WORLD", contentType = ContentType.Text.Plain)
+            }
 
-        get("/echo/{echo}") {
-            val s: String? = call.parameters["echo"]
-            call.respondText(s ?: "EMPTY", contentType = ContentType.Text.Plain)
+            get("/echo/{echo}") {
+                call.respondText(call.parameters["echo"] ?: "EMPTY", contentType = ContentType.Text.Plain)
+            }
         }
 
         install(StatusPages) {
