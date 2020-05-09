@@ -104,14 +104,18 @@ fun Application.module(testing: Boolean = false) {
 
 fun Routing.memos() = route("memos") {
     get {
-        val memos = Memo.all()
+        val memos = transaction {
+            Memo.all()
+        }
 
         call.respond(memos)
     }
 
     get("/{id}") {
         val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
-        val memo = Memo.findById(id) ?: return@get call.respond(HttpStatusCode.NotFound)
+        val memo = transaction {
+            Memo.findById(id)
+        } ?: return@get call.respond(HttpStatusCode.NotFound)
 
         call.respond(memo)
     }

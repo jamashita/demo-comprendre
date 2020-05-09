@@ -9,7 +9,7 @@ object Memos : IntIdTable("memos", "memo_id") {
     val subject = text("subject")
 }
 
-class Memo(memoId: EntityID<Int>) : IntEntity(memoId) {
+data class Memo(val memoId: EntityID<Int>) : IntEntity(memoId) {
     companion object : IntEntityClass<Memo>(Memos)
     val subject by Memos.subject
 }
