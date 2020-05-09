@@ -89,18 +89,15 @@ fun Application.module(testing: Boolean = false) {
         }
 
         get("/memos") {
-            val memos = transaction {
-                Memo.all()
-            }
+            val memos = Memo.all()
 
             call.respond(memos)
         }
 
         get("/memos/{id}") {
             val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val memo =
-                transaction { Memo.findById(id) }
-                    ?: return@get call.respond(HttpStatusCode.NotFound)
+            val memo = Memo.findById(id) ?: return@get call.respond(HttpStatusCode.NotFound)
+
             call.respond(memo)
         }
 
