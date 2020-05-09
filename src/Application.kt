@@ -79,10 +79,6 @@ fun Application.module(testing: Boolean = false) {
             call.respondText(s ?: "EMPTY", contentType = ContentType.Text.Plain)
         }
 
-        get("/json/jackson") {
-            call.respond(mapOf("hello" to "world"))
-        }
-
         install(StatusPages) {
             exception<AuthenticationException> { cause ->
                 call.respond(HttpStatusCode.Unauthorized)
@@ -90,20 +86,18 @@ fun Application.module(testing: Boolean = false) {
             exception<AuthorizationException> { cause ->
                 call.respond(HttpStatusCode.Forbidden)
             }
+        }
 
+        get("/memos") {
+            //
         }
 
         get("/memos/{id}") {
             val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val memoEntity =
+            val memo =
                 transaction { Memo.findById(id) }
                     ?: return@get call.respond(HttpStatusCode.NotFound)
-            call.respond(
-                mapOf(
-                    "memo_id" to memoEntity.id.value,
-                    "subject" to memoEntity.subject
-                )
-            )
+            call.respond(memo)
         }
 
         post("/memos") {
