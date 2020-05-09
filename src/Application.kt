@@ -15,8 +15,10 @@ import org.slf4j.event.*
 import io.ktor.websocket.*
 import io.ktor.http.cio.websocket.*
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.time.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -87,7 +89,11 @@ fun Application.module(testing: Boolean = false) {
         }
 
         get("/memos") {
-            //
+            val memos = transaction {
+                Memo.all()
+            }
+
+            call.respond(memos)
         }
 
         get("/memos/{id}") {
@@ -99,10 +105,10 @@ fun Application.module(testing: Boolean = false) {
         }
 
         post("/memos") {
-            val parameter = call.receive<MemoMemo>()
+            val memomemo = call.receive<MemoMemo>()
             val id = transaction {
                 Memos.insertAndGetId {
-                    it[subject] = parameter.subject
+                    it[subject] = memomemo.subject
                 }
             }
 
@@ -112,6 +118,33 @@ fun Application.module(testing: Boolean = false) {
                     "memo_id" to id.value
                 )
             )
+        }
+
+        put("/memos/{id}") {
+            val id = call.parameters["id"]?.toInt() ?: return@put call.respond(HttpStatusCode.BadRequest)
+            val memomemo = call.receive<MemoMemo>()
+            val affected = transaction {
+                Memos.update({Memos.id eq id}) {
+                    it[subject] = memomemo.subject
+                }
+            }
+
+            if (affected == 0) {
+                return@put call.respond(HttpStatusCode.NotFound)
+            }
+            call.respond(HttpStatusCode.OK)
+        }
+
+        delete("/memos/{id}") {
+            val id = call.parameters["id"]?.toInt() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+            val affected = transaction {
+                Memos.deleteWhere {Memos.id eq id}
+            }
+
+            if (affected == 0) {
+                return@delete call.respond(HttpStatusCode.NotFound)
+            }
+            call.respond(HttpStatusCode.NoContent)
         }
 
         webSocket("/myws/echo") {
