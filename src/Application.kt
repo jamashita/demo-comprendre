@@ -2,6 +2,7 @@ package com.comprendre
 
 import com.comprendre.infrastructures.routes.memos
 import com.comprendre.infrastructures.routes.users
+import com.comprendre.routes.routes
 import io.ktor.response.*
 import io.ktor.application.*
 import io.ktor.request.*
@@ -18,10 +19,6 @@ import org.slf4j.event.*
 import io.ktor.websocket.*
 import io.ktor.http.cio.websocket.*
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.time.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -105,8 +102,7 @@ fun Application.module(testing: Boolean = false) {
             }
         }
 
-        memos()
-        users()
+        routes()
 
         webSocket("/myws/echo") {
             send(Frame.Text("Hi from server"))
