@@ -8,6 +8,7 @@ buildscript {
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
         classpath "com.github.jengelman.gradle.plugins:shadow:$shadow_version"
         classpath "gradle.plugin.org.flywaydb:gradle-plugin-publishing:$flyway_version"
+        classpath "org.koin:koin-gradle-plugin:$koin_version"
     }
 }
 
@@ -15,6 +16,7 @@ apply plugin: "kotlin"
 apply plugin: "application"
 apply plugin: "com.github.johnrengelman.shadow"
 apply plugin: "org.flywaydb.flyway"
+apply plugin: 'koin'
 
 group "com.comprendre"
 version "0.0.1-SNAPSHOT"
@@ -47,6 +49,7 @@ dependencies {
     compile "org.jetbrains.exposed:exposed-dao:$exposed_version"
     compile "org.jetbrains.exposed:exposed-jdbc:$exposed_version"
     implementation "org.postgresql:postgresql:$postgres_version"
+    implementation "org.koin:koin-ktor:$koin_version"
 }
 
 shadowJar {
