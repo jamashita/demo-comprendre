@@ -1,25 +1,34 @@
 package com.comprendre
 
-import com.comprendre.infrastructures.routes.memos
-import com.comprendre.infrastructures.routes.users
 import com.comprendre.routes.routes
-import io.ktor.response.*
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.routing.*
-import io.ktor.http.*
-import com.fasterxml.jackson.databind.*
+import com.fasterxml.jackson.databind.SerializationFeature
+import io.ktor.application.Application
+import io.ktor.application.call
+import io.ktor.application.install
 import io.ktor.auth.Authentication
 import io.ktor.auth.UserIdPrincipal
 import io.ktor.auth.authenticate
 import io.ktor.auth.basic
-import io.ktor.jackson.*
 import io.ktor.features.*
-import org.slf4j.event.*
-import io.ktor.websocket.*
-import io.ktor.http.cio.websocket.*
+import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.cio.websocket.Frame
+import io.ktor.http.cio.websocket.pingPeriod
+import io.ktor.http.cio.websocket.readText
+import io.ktor.http.cio.websocket.timeout
+import io.ktor.jackson.jackson
+import io.ktor.request.path
+import io.ktor.response.respond
+import io.ktor.response.respondText
+import io.ktor.routing.get
+import io.ktor.routing.routing
+import io.ktor.websocket.webSocket
 import org.jetbrains.exposed.sql.Database
-import java.time.*
+import java.time.Duration
+import org.koin.ktor.ext.Koin
+import org.slf4j.event.Level
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
@@ -100,6 +109,10 @@ fun Application.module(testing: Boolean = false) {
             exception<AuthorizationException> { cause ->
                 call.respond(HttpStatusCode.Forbidden)
             }
+        }
+
+        install(Koin) {
+            modules(koinModules)
         }
 
         routes()
