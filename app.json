@@ -1,0 +1,6 @@
+{
+  "name": "demo-comprendre",
+  "description": "demo-comprendre",
+  "image": "heroku/java",
+  "addons": [ "heroku-postgresql" ]
+}
