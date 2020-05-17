@@ -9,16 +9,20 @@ import io.ktor.request.*
 import io.ktor.routing.*
 import io.ktor.http.*
 import com.fasterxml.jackson.databind.*
+import io.ktor.auth.Authentication
+import io.ktor.auth.UserIdPrincipal
+import io.ktor.auth.authenticate
+import io.ktor.auth.basic
 import io.ktor.jackson.*
 import io.ktor.features.*
 import org.slf4j.event.*
 import io.ktor.websocket.*
 import io.ktor.http.cio.websocket.*
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.insertAndGetId
-import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.time.*
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
@@ -52,6 +56,19 @@ fun Application.module(testing: Boolean = false) {
         anyHost() // @TODO: Don't do this in production if possible. Try to limit it.
     }
 
+    install(Authentication) {
+        basic(name = "saturn") {
+            realm = "Ktor Server"
+            validate { credentials ->
+                if (credentials.name == name && credentials.password == name) {
+                    return@validate UserIdPrincipal(credentials.name)
+                }
+
+                return@validate null
+            }
+        }
+    }
+
     install(io.ktor.websocket.WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
         timeout = Duration.ofSeconds(15)
@@ -70,13 +87,14 @@ fun Application.module(testing: Boolean = false) {
     )
 
     routing {
-        get("/") {
-            call.respondText("HELLO WORLD????", contentType = ContentType.Text.Plain)
-        }
+        authenticate("saturn") {
+            get {
+                call.respondText("HELLO WORLD", contentType = ContentType.Text.Plain)
+            }
 
-        get("/echo/{echo}") {
-            val s: String? = call.parameters["echo"]
-            call.respondText(s ?: "EMPTY", contentType = ContentType.Text.Plain)
+            get("/echo/{echo}") {
+                call.respondText(call.parameters["echo"] ?: "EMPTY", contentType = ContentType.Text.Plain)
+            }
         }
 
         install(StatusPages) {
@@ -88,33 +106,7 @@ fun Application.module(testing: Boolean = false) {
             }
         }
 
-        get("/memos") {
-            //
-        }
-
-        get("/memos/{id}") {
-            val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
-            val memo =
-                transaction { Memo.findById(id) }
-                    ?: return@get call.respond(HttpStatusCode.NotFound)
-            call.respond(memo)
-        }
-
-        post("/memos") {
-            val parameter = call.receive<MemoMemo>()
-            val id = transaction {
-                Memos.insertAndGetId {
-                    it[subject] = parameter.subject
-                }
-            }
-
-            call.respond(
-                HttpStatusCode.Created,
-                mapOf(
-                    "memo_id" to id.value
-                )
-            )
-        }
+        memos()
 
         webSocket("/myws/echo") {
             send(Frame.Text("Hi from server"))
@@ -125,6 +117,68 @@ fun Application.module(testing: Boolean = false) {
                 }
             }
         }
+    }
+}
+
+fun Routing.memos() = route("memos") {
+    get {
+        val memos = transaction {
+            Memo.all()
+        }
+
+        call.respond(memos)
+    }
+
+    get("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@get call.respond(HttpStatusCode.BadRequest)
+        val memo = transaction {
+            Memo.findById(id)
+        } ?: return@get call.respond(HttpStatusCode.NotFound)
+
+        call.respond(memo)
+    }
+
+    post {
+        val memomemo = call.receive<MemoMemo>()
+        val id = transaction {
+            Memos.insertAndGetId {
+                it[subject] = memomemo.subject
+            }
+        }
+
+        call.respond(
+            HttpStatusCode.Created,
+            mapOf(
+                "memo_id" to id.value
+            )
+        )
+    }
+
+    put("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@put call.respond(HttpStatusCode.BadRequest)
+        val memomemo = call.receive<MemoMemo>()
+        val affected = transaction {
+            Memos.update({Memos.id eq id}) {
+                it[subject] = memomemo.subject
+            }
+        }
+
+        if (affected == 0) {
+            return@put call.respond(HttpStatusCode.NotFound)
+        }
+        call.respond(HttpStatusCode.OK)
+    }
+
+    delete("/{id}") {
+        val id = call.parameters["id"]?.toInt() ?: return@delete call.respond(HttpStatusCode.BadRequest)
+        val affected = transaction {
+            Memos.deleteWhere { Memos.id eq id }
+        }
+
+        if (affected == 0) {
+            return@delete call.respond(HttpStatusCode.NotFound)
+        }
+        call.respond(HttpStatusCode.NoContent)
     }
 }
 
